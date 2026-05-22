@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -9,6 +10,9 @@ class LeaderCreateRequest(BaseModel):
     bio: str = Field(min_length=10)
     strategy: str = Field(min_length=2, max_length=120)
     risk_level: str = Field(min_length=2, max_length=32)
+    subscription_price: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=10, decimal_places=2)
+    monthly_price: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=10, decimal_places=2)
+    yearly_price: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=10, decimal_places=2)
 
 
 class LeaderUpdateRequest(BaseModel):
@@ -17,6 +21,9 @@ class LeaderUpdateRequest(BaseModel):
     bio: str = Field(min_length=10)
     strategy: str = Field(min_length=2, max_length=120)
     risk_level: str = Field(min_length=2, max_length=32)
+    subscription_price: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=10, decimal_places=2)
+    monthly_price: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=10, decimal_places=2)
+    yearly_price: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=10, decimal_places=2)
 
 
 class LeaderRead(BaseModel):
@@ -29,5 +36,9 @@ class LeaderRead(BaseModel):
     bio: str
     strategy: str
     risk_level: str
+    subscription_price: Decimal
+    monthly_price: Decimal
+    yearly_price: Decimal
+    is_verified: bool
     is_published: bool
     created_at: datetime

@@ -16,6 +16,26 @@ from app.schemas.content import FeedItem, PostCreateRequest, PostRead, SignalArc
 router = APIRouter()
 
 
+def _is_subscription_active(subscription: Subscription) -> bool:
+    if subscription.status != "paid" or not subscription.expires_at:
+        return False
+    expires_at = subscription.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at > datetime.now(timezone.utc)
+
+
+def _can_view_leader_content(leader_id: int, current_user: User, db: Session) -> bool:
+    if current_user.role == "admin":
+        return True
+    if current_user.leader_profile and current_user.leader_profile.id == leader_id:
+        return True
+    subscription = db.scalar(
+        select(Subscription).where(Subscription.user_id == current_user.id, Subscription.leader_id == leader_id)
+    )
+    return bool(subscription and _is_subscription_active(subscription))
+
+
 def _current_leader(current_user: User) -> Leader:
     if not current_user.leader_profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leader profile not found")
@@ -101,6 +121,18 @@ def delete_my_post(
     db.commit()
 
 
+@router.get("/posts/{post_id}", response_model=PostRead)
+def get_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Post:
+    post = db.get(Post, post_id)
+    if not post or not _can_view_leader_content(post.leader_id, current_user, db):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    return post
+
+
 @router.patch("/signals/{signal_id}", response_model=SignalRead)
 def update_my_signal(
     signal_id: int,
@@ -164,6 +196,18 @@ def delete_my_signal(
     db.commit()
 
 
+@router.get("/signals/{signal_id}", response_model=SignalRead)
+def get_signal(
+    signal_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Signal:
+    signal = db.get(Signal, signal_id)
+    if not signal or not _can_view_leader_content(signal.leader_id, current_user, db):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found")
+    return signal
+
+
 @router.get("/leaders/{leader_id}/posts", response_model=list[PostRead])
 def list_leader_posts(leader_id: int, db: Session = Depends(get_db)) -> list[Post]:
     return list(db.scalars(select(Post).where(Post.leader_id == leader_id).order_by(Post.created_at.desc())))
@@ -177,7 +221,13 @@ def list_leader_signals(leader_id: int, db: Session = Depends(get_db)) -> list[S
 @router.get("/feed", response_model=list[FeedItem])
 def my_feed(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[FeedItem]:
     leader_ids = list(
-        db.scalars(select(Subscription.leader_id).where(Subscription.user_id == current_user.id))
+        db.scalars(
+            select(Subscription.leader_id).where(
+                Subscription.user_id == current_user.id,
+                Subscription.status == "paid",
+                Subscription.expires_at > datetime.now(timezone.utc),
+            )
+        )
     )
     if not leader_ids:
         return []

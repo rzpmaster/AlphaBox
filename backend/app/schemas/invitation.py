@@ -20,3 +20,4 @@ class InvitationRead(BaseModel):
 
 class InvitationWithStatus(InvitationRead):
     is_used: bool
+    used_by_name: str | None = None

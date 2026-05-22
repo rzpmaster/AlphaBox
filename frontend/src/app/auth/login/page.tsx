@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -30,9 +31,12 @@ export default function LoginPage() {
           <Input type="email" placeholder={t("email")} value={email} onChange={(event) => setEmail(event.target.value)} required />
           <Input type="password" placeholder={t("password")} value={password} onChange={(event) => setPassword(event.target.value)} required />
           {login.error && <p className="text-sm text-redsignal">{login.error.message}</p>}
-          <Button className="w-full" disabled={login.isPending}>
-            {t("enterAlphaBox")}
-          </Button>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button disabled={login.isPending}>{t("enterAlphaBox")}</Button>
+            <Link href="/auth/register">
+              <Button className="w-full" type="button" variant="ghost">{t("register")}</Button>
+            </Link>
+          </div>
         </form>
       </Card>
     </main>

@@ -13,11 +13,18 @@ export default function RegisterPage() {
   const { t } = useI18n();
   const router = useRouter();
   const register = useRegister();
-  const [form, setForm] = useState({ email: "", password: "", display_name: "", invitation_code: "" });
+  const [form, setForm] = useState({ email: "", password: "", confirm_password: "", display_name: "", invitation_code: "" });
+  const [passwordError, setPasswordError] = useState("");
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    await register.mutateAsync(form);
+    setPasswordError("");
+    if (form.password !== form.confirm_password) {
+      setPasswordError(t("passwordMismatch"));
+      return;
+    }
+    const { confirm_password: _confirmPassword, ...payload } = form;
+    await register.mutateAsync(payload);
     router.push("/app");
   }
 
@@ -29,7 +36,9 @@ export default function RegisterPage() {
           <Input placeholder={t("displayName")} value={form.display_name} onChange={(event) => setForm({ ...form, display_name: event.target.value })} required />
           <Input type="email" placeholder={t("email")} value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required />
           <Input type="password" placeholder={t("password")} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required />
+          <Input type="password" placeholder={t("confirmPassword")} value={form.confirm_password} onChange={(event) => setForm({ ...form, confirm_password: event.target.value })} required />
           <Input placeholder={t("invitationCode")} value={form.invitation_code} onChange={(event) => setForm({ ...form, invitation_code: event.target.value })} required />
+          {passwordError && <p className="text-sm text-redsignal">{passwordError}</p>}
           {register.error && <p className="text-sm text-redsignal">{register.error.message}</p>}
           <Button className="w-full" disabled={register.isPending}>
             {t("createAccount")}

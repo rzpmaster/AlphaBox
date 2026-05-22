@@ -21,6 +21,10 @@ export type Leader = {
   bio: string;
   strategy: string;
   risk_level: string;
+  subscription_price: string;
+  monthly_price: string;
+  yearly_price: string;
+  is_verified: boolean;
   is_published: boolean;
   created_at: string;
 };
@@ -29,6 +33,11 @@ export type Subscription = {
   id: number;
   user_id: number;
   leader_id: number;
+  amount: string;
+  status: "pending" | "paid" | "cancelled" | "expired";
+  billing_period: "monthly" | "yearly";
+  paid_at: string | null;
+  expires_at: string | null;
   created_at: string;
 };
 
@@ -75,10 +84,18 @@ export type InvitationCode = {
   used_at: string | null;
   created_at: string;
   is_used: boolean;
+  used_by_name: string | null;
 };
 
 export type AdminUser = User & {
   following_count: number;
   follower_count: number;
   leader_id: number | null;
+  leader_is_verified: boolean;
+};
+
+export type AdminSubscription = {
+  subscription: Subscription;
+  leader: Leader;
+  user: User;
 };

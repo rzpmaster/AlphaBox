@@ -1,12 +1,15 @@
 "use client";
 
 import { LeaderCard } from "@/components/leader-card";
+import { useMe } from "@/hooks/use-auth";
 import { useLeaders } from "@/hooks/use-leaders";
 import { useI18n } from "@/lib/i18n";
 
 export default function LeadersPage() {
   const { t } = useI18n();
+  const me = useMe();
   const { data, isLoading, error } = useLeaders();
+  const isLocked = !me.data;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
@@ -17,7 +20,7 @@ export default function LeadersPage() {
       {isLoading && <p className="text-slate-400">{t("loadingLeaders")}</p>}
       {error && <p className="text-redsignal">{error.message}</p>}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {data?.map((leader) => <LeaderCard key={leader.id} leader={leader} />)}
+        {data?.map((leader) => <LeaderCard key={leader.id} leader={leader} locked={isLocked} />)}
       </div>
     </main>
   );

@@ -17,6 +17,7 @@ import {
   useMySignals,
   useUpdateLeaderProfile
 } from "@/hooks/use-leaders";
+import { useRequireAuth } from "@/hooks/use-require-auth";
 import { formatDateTime } from "@/lib/datetime";
 import { useI18n } from "@/lib/i18n";
 import { formatStrategyTags, parseStrategyTags } from "@/lib/strategy-tags";
@@ -25,6 +26,12 @@ const riskLevelOptions = ["Low", "Medium", "High"] as const;
 const iconButtonClass = "!h-8 !w-8 min-w-0 rounded border-line/80 bg-panel/80 !p-0 text-slate-300 hover:border-mint/60 hover:text-mint";
 const archiveIconButtonClass = "!h-8 !w-8 min-w-0 rounded border border-gold/50 bg-gold/15 !p-0 text-gold shadow-sm shadow-gold/10 hover:border-gold/80 hover:bg-gold/20";
 const dangerIconButtonClass = "!h-8 !w-8 min-w-0 rounded border border-redsignal/60 bg-redsignal/15 !p-0 text-redsignal shadow-sm shadow-redsignal/10 hover:border-redsignal hover:bg-redsignal/25";
+
+function riskBadgeClassName(riskLevel: string) {
+  if (riskLevel === "Low") return "border-mint/40 bg-mint/10 text-mint";
+  if (riskLevel === "High") return "border-redsignal/50 bg-redsignal/10 text-redsignal";
+  return "border-gold/50 bg-gold/10 text-gold";
+}
 
 function formatReturnRate(value: string | null) {
   if (!value) return "";
@@ -95,8 +102,87 @@ function StrategyTagInput({
   );
 }
 
+function RiskLevelSelect({
+  label,
+  value,
+  isOpen,
+  onOpenChange,
+  onChange,
+  formatLabel
+}: {
+  label: string;
+  value: string;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  onChange: (value: string) => void;
+  formatLabel: (value: string) => string;
+}) {
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        className="flex h-11 w-full items-center justify-between rounded-md border border-line bg-[#08120f] px-3 text-left text-sm text-slate-100 outline-none transition hover:border-mint/50 focus:border-mint"
+        onClick={() => onOpenChange(!isOpen)}
+      >
+        <span className="flex items-center gap-2">
+          <span className="text-slate-500">{label}</span>
+          <span>{formatLabel(value)}</span>
+        </span>
+        <ChevronDown className={isOpen ? "rotate-180 text-mint transition" : "text-slate-500 transition"} size={16} />
+      </button>
+      {isOpen && (
+        <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-md border border-line bg-panel shadow-xl shadow-ink/50" role="listbox" aria-label={label}>
+          {riskLevelOptions.map((riskLevel) => (
+            <button
+              key={riskLevel}
+              type="button"
+              role="option"
+              aria-selected={value === riskLevel}
+              className="flex h-10 w-full items-center justify-between px-3 text-left text-sm text-slate-100 transition hover:bg-panel2"
+              onClick={() => {
+                onChange(riskLevel);
+                onOpenChange(false);
+              }}
+            >
+              <span>{formatLabel(riskLevel)}</span>
+              {value === riskLevel && <Check className="text-mint" size={16} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SubscriptionPriceFields({
+  title,
+  monthlyValue,
+  yearlyValue,
+  onMonthlyChange,
+  onYearlyChange
+}: {
+  title: string;
+  monthlyValue: string;
+  yearlyValue: string;
+  onMonthlyChange: (value: string) => void;
+  onYearlyChange: (value: string) => void;
+}) {
+  return (
+    <div className="sm:col-span-2 rounded-md border border-line bg-[#08120f] p-3">
+      <p className="text-sm font-medium text-slate-200">{title}</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Input aria-label="monthly subscription price" min={0} step="0.01" type="number" value={monthlyValue} onChange={(event) => onMonthlyChange(event.target.value)} required />
+        <Input aria-label="yearly subscription price" min={0} step="0.01" type="number" value={yearlyValue} onChange={(event) => onYearlyChange(event.target.value)} required />
+      </div>
+    </div>
+  );
+}
+
 export default function LeaderStudioPage() {
   const { locale, t } = useI18n();
+  useRequireAuth();
   const profile = useMyLeaderProfile();
   const posts = useMyPosts();
   const signals = useMySignals();
@@ -106,21 +192,28 @@ export default function LeaderStudioPage() {
   const deleteSignal = useDeleteSignal();
   const [pendingDeletion, setPendingDeletion] = useState<{ type: "post" | "signal"; id: number } | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [isRiskMenuOpen, setIsRiskMenuOpen] = useState(false);
+  const [isCreateRiskMenuOpen, setIsCreateRiskMenuOpen] = useState(false);
+  const [isEditRiskMenuOpen, setIsEditRiskMenuOpen] = useState(false);
   const [profileMessage, setProfileMessage] = useState("");
   const [form, setForm] = useState({
     handle: "",
     headline: "",
     bio: "",
-    strategies: ["Equities"],
-    risk_level: "Medium"
+    strategies: [] as string[],
+    risk_level: "Medium",
+    subscription_price: "0.00",
+    monthly_price: "0.00",
+    yearly_price: "0.00"
   });
   const [profileForm, setProfileForm] = useState({
     handle: "",
     headline: "",
     bio: "",
     strategies: [] as string[],
-    risk_level: ""
+    risk_level: "",
+    subscription_price: "0.00",
+    monthly_price: "0.00",
+    yearly_price: "0.00"
   });
 
   async function onSubmit(event: FormEvent) {
@@ -137,7 +230,10 @@ export default function LeaderStudioPage() {
       headline: profile.data.headline,
       bio: profile.data.bio,
       strategies: parseStrategyTags(profile.data.strategy),
-      risk_level: profile.data.risk_level
+      risk_level: profile.data.risk_level,
+      subscription_price: profile.data.subscription_price,
+      monthly_price: profile.data.monthly_price,
+      yearly_price: profile.data.yearly_price
     });
     setIsEditingProfile(true);
   }
@@ -179,7 +275,21 @@ export default function LeaderStudioPage() {
               <Input placeholder={t("handle")} value={form.handle} onChange={(event) => setForm({ ...form, handle: event.target.value })} required />
               <StrategyTagInput placeholder={t("strategy")} tags={form.strategies} onChange={(strategies) => setForm({ ...form, strategies })} />
               <Input className="sm:col-span-2" placeholder={t("headline")} value={form.headline} onChange={(event) => setForm({ ...form, headline: event.target.value })} required />
-              <Input placeholder={t("riskLevel")} value={form.risk_level} onChange={(event) => setForm({ ...form, risk_level: event.target.value })} required />
+              <RiskLevelSelect
+                label={t("riskLevel")}
+                value={form.risk_level}
+                isOpen={isCreateRiskMenuOpen}
+                onOpenChange={setIsCreateRiskMenuOpen}
+                onChange={(riskLevel) => setForm({ ...form, risk_level: riskLevel })}
+                formatLabel={riskLevelLabel}
+              />
+              <SubscriptionPriceFields
+                title={t("subscriptionPrice")}
+                monthlyValue={form.monthly_price}
+                yearlyValue={form.yearly_price}
+                onMonthlyChange={(value) => setForm({ ...form, monthly_price: value, subscription_price: value })}
+                onYearlyChange={(value) => setForm({ ...form, yearly_price: value })}
+              />
             </div>
             <Textarea placeholder={t("bioMethodology")} value={form.bio} onChange={(event) => setForm({ ...form, bio: event.target.value })} required />
             {createProfile.error && <p className="text-sm text-redsignal">{createProfile.error.message}</p>}
@@ -199,7 +309,17 @@ export default function LeaderStudioPage() {
                 {parseStrategyTags(profile.data.strategy).map((tag) => (
                   <span key={tag} className="rounded bg-panel2 px-2 py-1">{tag}</span>
                 ))}
-                <span className="rounded bg-panel2 px-2 py-1">{t("risk")}: {profile.data.risk_level}</span>
+                <span className={`rounded border px-2 py-1 font-semibold ${riskBadgeClassName(profile.data.risk_level)}`}>
+                  {t("risk")}: {riskLevelLabel(profile.data.risk_level)}
+                </span>
+                {profile.data.is_verified ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-mint/50 bg-mint/10 px-3 py-1 font-bold text-mint">
+                    <span className="size-1.5 rounded-full bg-mint" />
+                    {t("siteVerified")}
+                  </span>
+                ) : (
+                  <span className="rounded-full border border-line bg-panel2 px-3 py-1 font-semibold text-slate-400">{t("unverifiedLeader")}</span>
+                )}
               </div>
               {profileMessage && <p className="mt-3 text-sm text-mint">{profileMessage}</p>}
             </div>
@@ -218,41 +338,21 @@ export default function LeaderStudioPage() {
               <Input placeholder={t("handle")} value={profileForm.handle} onChange={(event) => setProfileForm({ ...profileForm, handle: event.target.value })} required />
               <StrategyTagInput placeholder={t("strategy")} tags={profileForm.strategies} onChange={(strategies) => setProfileForm({ ...profileForm, strategies })} />
               <Input className="sm:col-span-2" placeholder={t("headline")} value={profileForm.headline} onChange={(event) => setProfileForm({ ...profileForm, headline: event.target.value })} required />
-              <div className="relative">
-                <button
-                  type="button"
-                  aria-expanded={isRiskMenuOpen}
-                  aria-haspopup="listbox"
-                  className="flex h-11 w-full items-center justify-between rounded-md border border-line bg-[#08120f] px-3 text-left text-sm text-slate-100 outline-none transition hover:border-mint/50 focus:border-mint"
-                  onClick={() => setIsRiskMenuOpen((isOpen) => !isOpen)}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="text-slate-500">{t("riskLevel")}</span>
-                    <span>{riskLevelLabel(profileForm.risk_level)}</span>
-                  </span>
-                  <ChevronDown className={isRiskMenuOpen ? "rotate-180 text-mint transition" : "text-slate-500 transition"} size={16} />
-                </button>
-                {isRiskMenuOpen && (
-                  <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-md border border-line bg-panel shadow-xl shadow-ink/50" role="listbox" aria-label={t("riskLevel")}>
-                    {riskLevelOptions.map((riskLevel) => (
-                      <button
-                        key={riskLevel}
-                        type="button"
-                        role="option"
-                        aria-selected={profileForm.risk_level === riskLevel}
-                        className="flex h-10 w-full items-center justify-between px-3 text-left text-sm text-slate-100 transition hover:bg-panel2"
-                        onClick={() => {
-                          setProfileForm({ ...profileForm, risk_level: riskLevel });
-                          setIsRiskMenuOpen(false);
-                        }}
-                      >
-                        <span>{riskLevelLabel(riskLevel)}</span>
-                        {profileForm.risk_level === riskLevel && <Check className="text-mint" size={16} />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <RiskLevelSelect
+                label={t("riskLevel")}
+                value={profileForm.risk_level}
+                isOpen={isEditRiskMenuOpen}
+                onOpenChange={setIsEditRiskMenuOpen}
+                onChange={(riskLevel) => setProfileForm({ ...profileForm, risk_level: riskLevel })}
+                formatLabel={riskLevelLabel}
+              />
+              <SubscriptionPriceFields
+                title={t("subscriptionPrice")}
+                monthlyValue={profileForm.monthly_price}
+                yearlyValue={profileForm.yearly_price}
+                onMonthlyChange={(value) => setProfileForm({ ...profileForm, monthly_price: value, subscription_price: value })}
+                onYearlyChange={(value) => setProfileForm({ ...profileForm, yearly_price: value })}
+              />
             </div>
             <Textarea placeholder={t("bioMethodology")} value={profileForm.bio} onChange={(event) => setProfileForm({ ...profileForm, bio: event.target.value })} required />
             {updateProfile.error && <p className="text-sm text-redsignal">{updateProfile.error.message}</p>}

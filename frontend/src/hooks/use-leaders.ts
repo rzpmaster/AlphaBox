@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
-import type { FeedItem, Leader, Post, Signal, SubscriptionWithLeader } from "@/types/api";
+import type { FeedItem, Leader, Post, Signal, Subscription, SubscriptionWithLeader } from "@/types/api";
 
 export function useLeaders() {
   return useQuery({ queryKey: ["leaders"], queryFn: () => api<Leader[]>("/leaders", { auth: false }) });
@@ -24,7 +24,7 @@ export function useMyLeaderProfile() {
 export function useCreateLeaderProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { handle: string; headline: string; bio: string; strategy: string; risk_level: string }) =>
+    mutationFn: (payload: { handle: string; headline: string; bio: string; strategy: string; risk_level: string; subscription_price: string; monthly_price: string; yearly_price: string }) =>
       api<Leader>("/leaders/me", { method: "POST", body: JSON.stringify(payload) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-leader-profile"] });
@@ -36,7 +36,7 @@ export function useCreateLeaderProfile() {
 export function useUpdateLeaderProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { handle: string; headline: string; bio: string; strategy: string; risk_level: string }) =>
+    mutationFn: (payload: { handle: string; headline: string; bio: string; strategy: string; risk_level: string; subscription_price: string; monthly_price: string; yearly_price: string }) =>
       api<Leader>("/leaders/me/profile", { method: "PATCH", body: JSON.stringify(payload) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-leader-profile"] });
@@ -52,10 +52,24 @@ export function useLeaderPosts(id: string | number) {
   });
 }
 
+export function usePost(id: string | number) {
+  return useQuery({
+    queryKey: ["posts", id],
+    queryFn: () => api<Post>(`/content/posts/${id}`)
+  });
+}
+
 export function useLeaderSignals(id: string | number) {
   return useQuery({
     queryKey: ["leader-signals", id],
     queryFn: () => api<Signal[]>(`/content/leaders/${id}/signals`, { auth: false })
+  });
+}
+
+export function useSignal(id: string | number) {
+  return useQuery({
+    queryKey: ["signals", id],
+    queryFn: () => api<Signal>(`/content/signals/${id}`)
   });
 }
 
@@ -79,11 +93,35 @@ export function useSubscriptions() {
   return useQuery({ queryKey: ["subscriptions"], queryFn: () => api<SubscriptionWithLeader[]>("/subscriptions") });
 }
 
+export function useSubscription(leaderId: string | number) {
+  return useQuery({
+    queryKey: ["subscriptions", leaderId],
+    queryFn: () => api<Subscription>(`/subscriptions/${leaderId}`),
+    retry: false
+  });
+}
+
 export function useSubscribe() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (leaderId: number) => api(`/subscriptions/${leaderId}`, { method: "POST" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["subscriptions"] })
+    mutationFn: (payload: { leaderId: number; billing_period: "monthly" | "yearly" }) =>
+      api<Subscription>(`/subscriptions/${payload.leaderId}`, { method: "POST", body: JSON.stringify({ billing_period: payload.billing_period }) }),
+    onSuccess: (_subscription, payload) => {
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["subscriptions", payload.leaderId] });
+    }
+  });
+}
+
+export function useCancelSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (leaderId: number) => api<void>(`/subscriptions/${leaderId}`, { method: "DELETE" }),
+    onSuccess: (_result, leaderId) => {
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["subscriptions", leaderId] });
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+    }
   });
 }
 

@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
-import { clearAuth, storeAuth } from "@/lib/auth";
+import { clearAuth, storeAuth, storeUser } from "@/lib/auth";
 import type { AuthResponse, User } from "@/types/api";
 
 export function useMe() {
@@ -35,6 +35,19 @@ export function useRegister() {
     onSuccess: (auth) => {
       storeAuth(auth);
       queryClient.setQueryData(["me"], auth.user);
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    }
+  });
+}
+
+export function useUpdateMe() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { display_name: string; current_password?: string; new_password?: string }) =>
+      api<User>("/users/me", { method: "PATCH", body: JSON.stringify(payload) }),
+    onSuccess: (user) => {
+      storeUser(user);
+      queryClient.setQueryData(["me"], user);
       queryClient.invalidateQueries({ queryKey: ["me"] });
     }
   });
