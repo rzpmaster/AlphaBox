@@ -1,4 +1,9 @@
 services:
+  # Deployment-facing values to confirm in the root .env:
+  # PUBLIC_ORIGIN=https://your-domain.example
+  # NEXT_PUBLIC_API_URL=/api/v1
+  # INTERNAL_API_URL=http://backend:8000
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -31,7 +36,8 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
-      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-${PUBLIC_ORIGIN:-http://localhost:3000},http://localhost:3000,http://127.0.0.1:3000}
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-alphabox}:${POSTGRES_PASSWORD:-alphabox}@postgres:5432/${POSTGRES_DB:-alphabox}
       REDIS_URL: redis://redis:6379/0
       CREATE_INITIAL_ADMIN: ${CREATE_INITIAL_ADMIN:-true}
@@ -53,6 +59,7 @@ services:
     build: ./frontend
     env_file: ./frontend/.env.example
     environment:
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
       INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8000}
       NEXT_PUBLIC_TIME_ZONE: ${NEXT_PUBLIC_TIME_ZONE:-UTC+8}
