@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev:backend": ".\\scripts\\dev-backend.cmd",
+    "dev:frontend": "next dev",
+    "dev": "concurrently -n BACKEND,FRONTEND -c green,blue \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -22,6 +24,7 @@
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^10.0.0",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.3",
     "postcss": "^8.4.49",

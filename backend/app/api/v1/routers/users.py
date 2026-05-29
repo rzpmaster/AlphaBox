@@ -26,9 +26,9 @@ def update_me(
     if payload.new_password:
         if not payload.current_password:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is required")
-        if not verify_password(payload.current_password, current_user.hashed_password):
+        if not verify_password(payload.current_password.get_secret_value(), current_user.hashed_password):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
-        current_user.hashed_password = hash_password(payload.new_password)
+        current_user.hashed_password = hash_password(payload.new_password.get_secret_value())
 
     db.commit()
     db.refresh(current_user)

@@ -26,7 +26,7 @@ Private invitation-only investment signal subscription platform. AlphaBox lets u
 
 Default admin credentials:
 
-- Email: `admin@alphabox.local`
+- Email: `admin@alphabox.com`
 - Password: `ChangeMe123!`
 
 Override them in `backend/.env` with:

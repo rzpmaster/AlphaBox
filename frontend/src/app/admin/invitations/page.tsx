@@ -27,9 +27,10 @@ import { formatDateTime } from "@/lib/datetime";
 import { useI18n } from "@/lib/i18n";
 import type { AdminUser } from "@/types/api";
 
-const invitationPageSize = 10;
-const userActionButtonClass = "h-9 min-w-0 px-3 text-xs";
-const userDangerButtonClass = "h-9 min-w-0 border border-redsignal/50 bg-redsignal/15 px-3 text-xs text-redsignal hover:border-redsignal hover:bg-redsignal/25";
+const defaultTablePageSize = 8;
+const maxTablePageSize = 100;
+const userActionButtonClass = "h-9 w-full min-w-0 px-2 text-xs";
+const userDangerButtonClass = "h-11 w-24 min-w-0 border border-redsignal/50 bg-redsignal/15 px-3 text-xs text-redsignal hover:border-redsignal hover:bg-redsignal/25";
 
 type AdminDeletionTarget =
   | { type: "invitation"; id: number; code: string }
@@ -61,6 +62,71 @@ function matchesRoleFilter(user: AdminUser, role: "all" | "admin" | "leader" | "
   return user.role !== "admin" && !user.leader_id;
 }
 
+function normalizePageSize(value: number) {
+  if (!Number.isFinite(value)) return defaultTablePageSize;
+  return Math.min(maxTablePageSize, Math.max(1, Math.floor(value)));
+}
+
+function getPageCount(total: number, pageSize: number) {
+  return Math.max(1, Math.ceil(total / pageSize));
+}
+
+function paginateItems<T>(items: T[], page: number, pageSize: number) {
+  const pageCount = getPageCount(items.length, pageSize);
+  const currentPage = Math.min(page, pageCount);
+  return {
+    currentPage,
+    pageCount,
+    pagedItems: items.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  };
+}
+
+type PaginationControlsProps = {
+  currentPage: number;
+  label: string;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+  pageCount: number;
+  pageSize: number;
+  t: ReturnType<typeof useI18n>["t"];
+  total: number;
+};
+
+function PaginationControls({ currentPage, label, onPageChange, onPageSizeChange, pageCount, pageSize, t, total }: PaginationControlsProps) {
+  return (
+    <div className="mt-4 flex flex-col gap-3 text-sm text-slate-400 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-wrap items-center gap-3">
+        <span>
+          {label}: {t("page")} {currentPage} / {pageCount}
+        </span>
+        <span>
+          {t("total")} {total}
+        </span>
+        <label className="flex items-center gap-2">
+          <span>{t("perPage")}</span>
+          <Input
+            className="h-9 w-24"
+            min={1}
+            max={maxTablePageSize}
+            type="number"
+            value={pageSize}
+            onChange={(event) => onPageSizeChange(normalizePageSize(Number(event.target.value)))}
+          />
+          <span className="text-xs text-slate-500">{t("maxPageSize")} {maxTablePageSize}</span>
+        </label>
+      </div>
+      <div className="flex gap-2">
+        <Button type="button" variant="ghost" disabled={currentPage <= 1} onClick={() => onPageChange(Math.max(1, currentPage - 1))}>
+          {t("previous")}
+        </Button>
+        <Button type="button" variant="ghost" disabled={currentPage >= pageCount} onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))}>
+          {t("next")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function InvitationAdminPage() {
   const { locale, t } = useI18n();
   const me = useMe();
@@ -83,12 +149,15 @@ export default function InvitationAdminPage() {
   const [invitationQuery, setInvitationQuery] = useState("");
   const [invitationStatus, setInvitationStatus] = useState<"all" | "used" | "unused">("all");
   const [invitationPage, setInvitationPage] = useState(1);
+  const [tablePageSize, setTablePageSize] = useState(defaultTablePageSize);
   const [userQuery, setUserQuery] = useState("");
   const [userRole, setUserRole] = useState<"all" | "admin" | "leader" | "user">("all");
   const [userStatus, setUserStatus] = useState<"all" | "active" | "banned">("all");
+  const [userPage, setUserPage] = useState(1);
   const [orderQuery, setOrderQuery] = useState("");
   const [orderStatus, setOrderStatus] = useState<"all" | "pending" | "paid" | "cancelled" | "expired">("all");
   const [orderPeriod, setOrderPeriod] = useState<"all" | "monthly" | "yearly">("all");
+  const [orderPage, setOrderPage] = useState(1);
   const [pendingDeletion, setPendingDeletion] = useState<AdminDeletionTarget | null>(null);
 
   const filteredInvitations = useMemo(() => {
@@ -99,8 +168,11 @@ export default function InvitationAdminPage() {
       return includesText(invitation.code, invitationQuery) || includesText(invitation.used_by_name, invitationQuery);
     });
   }, [invitationQuery, invitationStatus, invitations.data]);
-  const invitationPageCount = Math.max(1, Math.ceil(filteredInvitations.length / invitationPageSize));
-  const pagedInvitations = filteredInvitations.slice((Math.min(invitationPage, invitationPageCount) - 1) * invitationPageSize, Math.min(invitationPage, invitationPageCount) * invitationPageSize);
+  const {
+    currentPage: currentInvitationPage,
+    pageCount: invitationPageCount,
+    pagedItems: pagedInvitations
+  } = paginateItems(filteredInvitations, invitationPage, tablePageSize);
 
   const filteredUsers = useMemo(() => {
     return (users.data ?? []).filter((user) => {
@@ -111,6 +183,11 @@ export default function InvitationAdminPage() {
       return includesText(user.display_name, userQuery) || includesText(user.email, userQuery);
     });
   }, [userQuery, userRole, userStatus, users.data]);
+  const {
+    currentPage: currentUserPage,
+    pageCount: userPageCount,
+    pagedItems: pagedUsers
+  } = paginateItems(filteredUsers, userPage, tablePageSize);
 
   const filteredSubscriptions = useMemo(() => {
     return (subscriptions.data ?? []).filter(({ subscription, leader, user }) => {
@@ -120,6 +197,18 @@ export default function InvitationAdminPage() {
       return includesText(user.display_name, orderQuery) || includesText(user.email, orderQuery) || includesText(leader.handle, orderQuery);
     });
   }, [orderPeriod, orderQuery, orderStatus, subscriptions.data]);
+  const {
+    currentPage: currentOrderPage,
+    pageCount: orderPageCount,
+    pagedItems: pagedSubscriptions
+  } = paginateItems(filteredSubscriptions, orderPage, tablePageSize);
+
+  function changeTablePageSize(pageSize: number) {
+    setTablePageSize(pageSize);
+    setInvitationPage(1);
+    setUserPage(1);
+    setOrderPage(1);
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -312,13 +401,16 @@ export default function InvitationAdminPage() {
             </tbody>
           </table>
         </div>
-        <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-400">
-          <span>{t("page")} {Math.min(invitationPage, invitationPageCount)} / {invitationPageCount}</span>
-          <div className="flex gap-2">
-            <Button type="button" variant="ghost" disabled={invitationPage <= 1} onClick={() => setInvitationPage((page) => Math.max(1, page - 1))}>{t("previous")}</Button>
-            <Button type="button" variant="ghost" disabled={invitationPage >= invitationPageCount} onClick={() => setInvitationPage((page) => Math.min(invitationPageCount, page + 1))}>{t("next")}</Button>
-          </div>
-        </div>
+        <PaginationControls
+          currentPage={currentInvitationPage}
+          label={t("generatedCodes")}
+          onPageChange={setInvitationPage}
+          onPageSizeChange={changeTablePageSize}
+          pageCount={invitationPageCount}
+          pageSize={tablePageSize}
+          t={t}
+          total={filteredInvitations.length}
+        />
         {copyNotice && <p className="mt-3 text-sm text-gold">{copyNotice}</p>}
       </section>
 
@@ -328,17 +420,17 @@ export default function InvitationAdminPage() {
           <p className="mt-2 text-sm text-slate-400">{t("userManagementCopy")}</p>
         </div>
         <div className="mb-4 flex flex-col gap-3 rounded-lg border border-line bg-panel/50 p-4 xl:flex-row xl:items-center">
-          <Input className="xl:max-w-xs" placeholder={t("filterKeyword")} value={userQuery} onChange={(event) => setUserQuery(event.target.value)} />
+          <Input className="xl:max-w-xs" placeholder={t("filterKeyword")} value={userQuery} onChange={(event) => { setUserQuery(event.target.value); setUserPage(1); }} />
           <div className="flex flex-wrap gap-2">
             {(["all", "admin", "leader", "user"] as const).map((role) => (
-              <button key={role} type="button" className={userRole === role ? "rounded-md bg-mint px-3 py-2 text-sm font-semibold text-ink" : "rounded-md border border-line bg-panel/70 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-mint/50"} onClick={() => setUserRole(role)}>
+              <button key={role} type="button" className={userRole === role ? "rounded-md bg-mint px-3 py-2 text-sm font-semibold text-ink" : "rounded-md border border-line bg-panel/70 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-mint/50"} onClick={() => { setUserRole(role); setUserPage(1); }}>
                 {role === "all" ? t("all") : role === "admin" ? t("adminRole") : role === "leader" ? t("leaderRole") : t("userRole")}
               </button>
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
             {(["all", "active", "banned"] as const).map((status) => (
-              <button key={status} type="button" className={userStatus === status ? "rounded-md bg-mint px-3 py-2 text-sm font-semibold text-ink" : "rounded-md border border-line bg-panel/70 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-mint/50"} onClick={() => setUserStatus(status)}>
+              <button key={status} type="button" className={userStatus === status ? "rounded-md bg-mint px-3 py-2 text-sm font-semibold text-ink" : "rounded-md border border-line bg-panel/70 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-mint/50"} onClick={() => { setUserStatus(status); setUserPage(1); }}>
                 {t(status)}
               </button>
             ))}
@@ -349,29 +441,29 @@ export default function InvitationAdminPage() {
             <thead className="bg-panel2 text-left text-xs uppercase text-slate-400">
               <tr>
                 <th className="px-4 py-3">{t("user")}</th>
-                <th className="px-4 py-3">{t("role")}</th>
+                <th className="w-[220px] min-w-[220px] px-4 py-3">{t("role")}</th>
                 <th className="px-4 py-3">{t("status")}</th>
                 <th className="px-4 py-3">{t("following")}</th>
                 <th className="px-4 py-3">{t("followers")}</th>
-                <th className="px-4 py-3 text-right">{t("actions")}</th>
+                <th className="w-[340px] min-w-[340px] px-4 py-3 text-right">{t("actions")}</th>
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((user) => (
+              {pagedUsers.map((user) => (
                 <tr key={user.id} className="border-t border-line">
                   <td className="px-4 py-3">
                     <div className="font-semibold text-slate-100">{user.display_name}</div>
                     <div className="text-xs text-slate-500">{user.email}</div>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
+                  <td className="w-[220px] min-w-[220px] px-4 py-3">
+                    <div className="flex max-w-[188px] flex-wrap gap-2">
                       {getUserRoleLabels(user, t).map((label) => (
-                        <span key={label} className="rounded bg-panel2 px-2 py-1 text-xs text-slate-200">
+                        <span key={label} className="whitespace-nowrap rounded bg-panel2 px-2 py-1 text-xs text-slate-200">
                           {label}
                         </span>
                       ))}
                       {user.leader_is_verified && (
-                        <span className="rounded bg-mint/15 px-2 py-1 text-xs font-semibold text-mint">
+                        <span className="whitespace-nowrap rounded bg-mint/15 px-2 py-1 text-xs font-semibold text-mint">
                           {t("siteVerified")}
                         </span>
                       )}
@@ -384,9 +476,9 @@ export default function InvitationAdminPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-300">{user.following_count}</td>
                   <td className="px-4 py-3 text-slate-300">{user.follower_count}</td>
-                  <td className="px-4 py-3 align-middle">
-                    <div className="flex min-w-[260px] flex-col items-end gap-2">
-                      <div className="flex flex-wrap justify-end gap-2">
+                  <td className="w-[340px] min-w-[340px] px-4 py-3 align-middle">
+                    <div className="ml-auto grid w-[312px] grid-cols-[1fr_96px] items-center gap-3">
+                      <div className="grid gap-2">
                         {user.role === "admin" ? (
                           <Button
                             className={userActionButtonClass}
@@ -410,7 +502,7 @@ export default function InvitationAdminPage() {
                             {t("promoteAdmin")}
                           </Button>
                         )}
-                        {user.leader_id && (
+                        {user.leader_id ? (
                           user.leader_is_verified ? (
                             <Button className={userActionButtonClass} type="button" variant="ghost" disabled={unverifyLeader.isPending} onClick={() => unverifyLeader.mutate(user.leader_id!)}>
                               <BadgeX size={15} />
@@ -422,27 +514,27 @@ export default function InvitationAdminPage() {
                               {t("verifyLeader")}
                             </Button>
                           )
-                        )}
-                      </div>
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {user.is_active ? (
-                          <Button
-                            className={userDangerButtonClass}
-                            type="button"
-                            variant="ghost"
-                            disabled={user.id === currentUserId || banUser.isPending}
-                            onClick={() => banUser.mutate(user.id)}
-                          >
-                            <Ban size={15} />
-                            {t("ban")}
-                          </Button>
                         ) : (
-                          <Button className={userActionButtonClass} type="button" variant="ghost" disabled={unbanUser.isPending} onClick={() => unbanUser.mutate(user.id)}>
-                            <UserCheck size={15} />
-                            {t("unban")}
-                          </Button>
+                          <div className="h-9" aria-hidden="true" />
                         )}
                       </div>
+                      {user.is_active ? (
+                        <Button
+                          className={userDangerButtonClass}
+                          type="button"
+                          variant="ghost"
+                          disabled={user.id === currentUserId || banUser.isPending}
+                          onClick={() => banUser.mutate(user.id)}
+                        >
+                          <Ban size={15} />
+                          {t("ban")}
+                        </Button>
+                      ) : (
+                        <Button className="h-11 w-24 min-w-0 px-3 text-xs" type="button" variant="ghost" disabled={unbanUser.isPending} onClick={() => unbanUser.mutate(user.id)}>
+                          <UserCheck size={15} />
+                          {t("unban")}
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -457,6 +549,16 @@ export default function InvitationAdminPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          currentPage={currentUserPage}
+          label={t("userManagement")}
+          onPageChange={setUserPage}
+          onPageSizeChange={changeTablePageSize}
+          pageCount={userPageCount}
+          pageSize={tablePageSize}
+          t={t}
+          total={filteredUsers.length}
+        />
       </section>
 
       <section className="mt-10">
@@ -465,17 +567,17 @@ export default function InvitationAdminPage() {
           <p className="mt-2 text-sm text-slate-400">{t("orderManagementCopy")}</p>
         </div>
         <div className="mb-4 flex flex-col gap-3 rounded-lg border border-line bg-panel/50 p-4 xl:flex-row xl:items-center">
-          <Input className="xl:max-w-xs" placeholder={t("filterKeyword")} value={orderQuery} onChange={(event) => setOrderQuery(event.target.value)} />
+          <Input className="xl:max-w-xs" placeholder={t("filterKeyword")} value={orderQuery} onChange={(event) => { setOrderQuery(event.target.value); setOrderPage(1); }} />
           <div className="flex flex-wrap gap-2">
             {(["all", "pending", "paid", "cancelled", "expired"] as const).map((status) => (
-              <button key={status} type="button" className={orderStatus === status ? "rounded-md bg-mint px-3 py-2 text-sm font-semibold text-ink" : "rounded-md border border-line bg-panel/70 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-mint/50"} onClick={() => setOrderStatus(status)}>
+              <button key={status} type="button" className={orderStatus === status ? "rounded-md bg-mint px-3 py-2 text-sm font-semibold text-ink" : "rounded-md border border-line bg-panel/70 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-mint/50"} onClick={() => { setOrderStatus(status); setOrderPage(1); }}>
                 {t(status)}
               </button>
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
             {(["all", "monthly", "yearly"] as const).map((period) => (
-              <button key={period} type="button" className={orderPeriod === period ? "rounded-md bg-mint px-3 py-2 text-sm font-semibold text-ink" : "rounded-md border border-line bg-panel/70 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-mint/50"} onClick={() => setOrderPeriod(period)}>
+              <button key={period} type="button" className={orderPeriod === period ? "rounded-md bg-mint px-3 py-2 text-sm font-semibold text-ink" : "rounded-md border border-line bg-panel/70 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-mint/50"} onClick={() => { setOrderPeriod(period); setOrderPage(1); }}>
                 {t(period)}
               </button>
             ))}
@@ -496,7 +598,7 @@ export default function InvitationAdminPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredSubscriptions.map(({ subscription, leader, user }) => (
+              {pagedSubscriptions.map(({ subscription, leader, user }) => (
                 <tr key={subscription.id} className="border-t border-line">
                   <td className="px-4 py-3">
                     <div className="font-semibold text-slate-100">{user.display_name}</div>
@@ -565,6 +667,16 @@ export default function InvitationAdminPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          currentPage={currentOrderPage}
+          label={t("orderManagement")}
+          onPageChange={setOrderPage}
+          onPageSizeChange={changeTablePageSize}
+          pageCount={orderPageCount}
+          pageSize={tablePageSize}
+          t={t}
+          total={filteredSubscriptions.length}
+        />
       </section>
 
       {pendingDeletion && (

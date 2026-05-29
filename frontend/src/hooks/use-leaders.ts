@@ -96,7 +96,7 @@ export function useSubscriptions() {
 export function useSubscription(leaderId: string | number) {
   return useQuery({
     queryKey: ["subscriptions", leaderId],
-    queryFn: () => api<Subscription>(`/subscriptions/${leaderId}`),
+    queryFn: () => api<Subscription | null>(`/subscriptions/${leaderId}`),
     retry: false
   });
 }

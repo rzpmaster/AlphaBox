@@ -104,17 +104,17 @@ def subscribe(
     return subscription
 
 
-@router.get("/{leader_id}", response_model=SubscriptionRead)
+@router.get("/{leader_id}", response_model=SubscriptionRead | None)
 def get_subscription(
     leader_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Subscription:
+) -> Subscription | None:
     subscription = db.scalar(
         select(Subscription).where(Subscription.user_id == current_user.id, Subscription.leader_id == leader_id)
     )
     if not subscription:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+        return None
     previous_status = subscription.status
     _refresh_expired(subscription)
     if previous_status != subscription.status:

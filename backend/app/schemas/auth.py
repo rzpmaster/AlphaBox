@@ -1,18 +1,19 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
+from app.schemas.common import EmailAddress
 from app.schemas.user import UserRead
 
 
 class RegisterRequest(BaseModel):
-    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=255)
-    password: str = Field(min_length=8, max_length=128)
+    email: EmailAddress
+    password: SecretStr = Field(min_length=8, max_length=128)
     display_name: str = Field(min_length=2, max_length=120)
     invitation_code: str = Field(min_length=4, max_length=64)
 
 
 class LoginRequest(BaseModel):
-    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=255)
-    password: str
+    email: EmailAddress
+    password: SecretStr
 
 
 class TokenResponse(BaseModel):

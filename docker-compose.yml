@@ -41,7 +41,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-alphabox}:${POSTGRES_PASSWORD:-alphabox}@postgres:5432/${POSTGRES_DB:-alphabox}
       REDIS_URL: redis://redis:6379/0
       CREATE_INITIAL_ADMIN: ${CREATE_INITIAL_ADMIN:-true}
-      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@alphabox.local}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@alphabox.com}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-ChangeMe123!}
       INITIAL_ADMIN_DISPLAY_NAME: ${INITIAL_ADMIN_DISPLAY_NAME:-AlphaBox Admin}
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
@@ -56,17 +56,19 @@ services:
         condition: service_started
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
+        NEXT_PUBLIC_TIME_ZONE: ${NEXT_PUBLIC_TIME_ZONE:-UTC+8}
+        INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8000}
     env_file: ./frontend/.env.example
     environment:
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
       INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8000}
       NEXT_PUBLIC_TIME_ZONE: ${NEXT_PUBLIC_TIME_ZONE:-UTC+8}
-    command: npm run dev -- --hostname 0.0.0.0 --port 3000
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    command: npm run start -- --hostname 0.0.0.0 --port 3000
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:

@@ -42,6 +42,10 @@ def _current_leader(current_user: User) -> Leader:
     return current_user.leader_profile
 
 
+def _not_deleted(model):
+    return model.is_deleted.is_(False)
+
+
 @router.post("/posts", response_model=PostRead, status_code=status.HTTP_201_CREATED)
 def create_post(
     payload: PostCreateRequest,
@@ -76,7 +80,7 @@ def list_my_posts(
     current_user: User = Depends(require_leader_or_admin),
 ) -> list[Post]:
     leader = _current_leader(current_user)
-    return list(db.scalars(select(Post).where(Post.leader_id == leader.id).order_by(Post.created_at.desc())))
+    return list(db.scalars(select(Post).where(Post.leader_id == leader.id, _not_deleted(Post)).order_by(Post.created_at.desc())))
 
 
 @router.get("/me/signals", response_model=list[SignalRead])
@@ -85,7 +89,7 @@ def list_my_signals(
     current_user: User = Depends(require_leader_or_admin),
 ) -> list[Signal]:
     leader = _current_leader(current_user)
-    return list(db.scalars(select(Signal).where(Signal.leader_id == leader.id).order_by(Signal.created_at.desc())))
+    return list(db.scalars(select(Signal).where(Signal.leader_id == leader.id, _not_deleted(Signal)).order_by(Signal.created_at.desc())))
 
 
 @router.patch("/posts/{post_id}", response_model=PostRead)
@@ -97,7 +101,7 @@ def update_my_post(
 ) -> Post:
     leader = _current_leader(current_user)
     post = db.get(Post, post_id)
-    if not post or post.leader_id != leader.id:
+    if not post or post.is_deleted or post.leader_id != leader.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 
     post.title = payload.title
@@ -115,9 +119,10 @@ def delete_my_post(
 ) -> None:
     leader = _current_leader(current_user)
     post = db.get(Post, post_id)
-    if not post or post.leader_id != leader.id:
+    if not post or post.is_deleted or post.leader_id != leader.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    db.delete(post)
+    post.is_deleted = True
+    post.deleted_at = datetime.now(timezone.utc)
     db.commit()
 
 
@@ -128,7 +133,7 @@ def get_post(
     current_user: User = Depends(get_current_user),
 ) -> Post:
     post = db.get(Post, post_id)
-    if not post or not _can_view_leader_content(post.leader_id, current_user, db):
+    if not post or post.is_deleted or not _can_view_leader_content(post.leader_id, current_user, db):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     return post
 
@@ -142,7 +147,7 @@ def update_my_signal(
 ) -> Signal:
     leader = _current_leader(current_user)
     signal = db.get(Signal, signal_id)
-    if not signal or signal.leader_id != leader.id:
+    if not signal or signal.is_deleted or signal.leader_id != leader.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found")
     if signal.is_archived:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Archived signals cannot be updated")
@@ -163,7 +168,7 @@ def archive_my_signal(
 ) -> Signal:
     leader = _current_leader(current_user)
     signal = db.get(Signal, signal_id)
-    if not signal or signal.leader_id != leader.id:
+    if not signal or signal.is_deleted or signal.leader_id != leader.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found")
     if signal.is_archived:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Signal is already archived")
@@ -190,9 +195,10 @@ def delete_my_signal(
 ) -> None:
     leader = _current_leader(current_user)
     signal = db.get(Signal, signal_id)
-    if not signal or signal.leader_id != leader.id:
+    if not signal or signal.is_deleted or signal.leader_id != leader.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found")
-    db.delete(signal)
+    signal.is_deleted = True
+    signal.deleted_at = datetime.now(timezone.utc)
     db.commit()
 
 
@@ -203,19 +209,19 @@ def get_signal(
     current_user: User = Depends(get_current_user),
 ) -> Signal:
     signal = db.get(Signal, signal_id)
-    if not signal or not _can_view_leader_content(signal.leader_id, current_user, db):
+    if not signal or signal.is_deleted or not _can_view_leader_content(signal.leader_id, current_user, db):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found")
     return signal
 
 
 @router.get("/leaders/{leader_id}/posts", response_model=list[PostRead])
 def list_leader_posts(leader_id: int, db: Session = Depends(get_db)) -> list[Post]:
-    return list(db.scalars(select(Post).where(Post.leader_id == leader_id).order_by(Post.created_at.desc())))
+    return list(db.scalars(select(Post).where(Post.leader_id == leader_id, _not_deleted(Post)).order_by(Post.created_at.desc())))
 
 
 @router.get("/leaders/{leader_id}/signals", response_model=list[SignalRead])
 def list_leader_signals(leader_id: int, db: Session = Depends(get_db)) -> list[Signal]:
-    return list(db.scalars(select(Signal).where(Signal.leader_id == leader_id).order_by(Signal.created_at.desc())))
+    return list(db.scalars(select(Signal).where(Signal.leader_id == leader_id, _not_deleted(Signal)).order_by(Signal.created_at.desc())))
 
 
 @router.get("/feed", response_model=list[FeedItem])
@@ -233,8 +239,8 @@ def my_feed(db: Session = Depends(get_db), current_user: User = Depends(get_curr
         return []
 
     leaders = {leader.id: leader for leader in db.scalars(select(Leader).where(Leader.id.in_(leader_ids))).all()}
-    posts = db.scalars(select(Post).where(Post.leader_id.in_(leader_ids)).order_by(Post.created_at.desc())).all()
-    signals = db.scalars(select(Signal).where(Signal.leader_id.in_(leader_ids)).order_by(Signal.created_at.desc())).all()
+    posts = db.scalars(select(Post).where(Post.leader_id.in_(leader_ids), _not_deleted(Post)).order_by(Post.created_at.desc())).all()
+    signals = db.scalars(select(Signal).where(Signal.leader_id.in_(leader_ids), _not_deleted(Signal)).order_by(Signal.created_at.desc())).all()
     items: list[FeedItem] = [
         FeedItem(type="post", created_at=post.created_at, leader=leaders[post.leader_id], item=post) for post in posts
     ]

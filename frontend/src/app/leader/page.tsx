@@ -45,6 +45,12 @@ function formatSignalPrice(value: string | null) {
   return numericValue.toFixed(2);
 }
 
+function formatCurrency(value: string) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return `¥${value}`;
+  return `¥${numericValue.toFixed(2)}`;
+}
+
 function StrategyTagInput({
   placeholder,
   tags,
@@ -158,12 +164,16 @@ function RiskLevelSelect({
 
 function SubscriptionPriceFields({
   title,
+  monthlyLabel,
+  yearlyLabel,
   monthlyValue,
   yearlyValue,
   onMonthlyChange,
   onYearlyChange
 }: {
   title: string;
+  monthlyLabel: string;
+  yearlyLabel: string;
   monthlyValue: string;
   yearlyValue: string;
   onMonthlyChange: (value: string) => void;
@@ -173,8 +183,14 @@ function SubscriptionPriceFields({
     <div className="sm:col-span-2 rounded-md border border-line bg-[#08120f] p-3">
       <p className="text-sm font-medium text-slate-200">{title}</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <Input aria-label="monthly subscription price" min={0} step="0.01" type="number" value={monthlyValue} onChange={(event) => onMonthlyChange(event.target.value)} required />
-        <Input aria-label="yearly subscription price" min={0} step="0.01" type="number" value={yearlyValue} onChange={(event) => onYearlyChange(event.target.value)} required />
+        <label className="grid gap-1.5">
+          <span className="text-xs font-medium text-slate-400">{monthlyLabel}</span>
+          <Input aria-label={monthlyLabel} min={0} step="0.01" type="number" value={monthlyValue} onChange={(event) => onMonthlyChange(event.target.value)} required />
+        </label>
+        <label className="grid gap-1.5">
+          <span className="text-xs font-medium text-slate-400">{yearlyLabel}</span>
+          <Input aria-label={yearlyLabel} min={0} step="0.01" type="number" value={yearlyValue} onChange={(event) => onYearlyChange(event.target.value)} required />
+        </label>
       </div>
     </div>
   );
@@ -195,6 +211,7 @@ export default function LeaderStudioPage() {
   const [isCreateRiskMenuOpen, setIsCreateRiskMenuOpen] = useState(false);
   const [isEditRiskMenuOpen, setIsEditRiskMenuOpen] = useState(false);
   const [profileMessage, setProfileMessage] = useState("");
+  const [acceptedLeaderTerms, setAcceptedLeaderTerms] = useState(false);
   const [form, setForm] = useState({
     handle: "",
     headline: "",
@@ -218,6 +235,7 @@ export default function LeaderStudioPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (!acceptedLeaderTerms) return;
     const { strategies, ...payload } = form;
     await createProfile.mutateAsync({ ...payload, strategy: formatStrategyTags(strategies) });
   }
@@ -285,6 +303,8 @@ export default function LeaderStudioPage() {
               />
               <SubscriptionPriceFields
                 title={t("subscriptionPrice")}
+                monthlyLabel={t("monthlyPrice")}
+                yearlyLabel={t("yearlyPrice")}
                 monthlyValue={form.monthly_price}
                 yearlyValue={form.yearly_price}
                 onMonthlyChange={(value) => setForm({ ...form, monthly_price: value, subscription_price: value })}
@@ -292,8 +312,18 @@ export default function LeaderStudioPage() {
               />
             </div>
             <Textarea placeholder={t("bioMethodology")} value={form.bio} onChange={(event) => setForm({ ...form, bio: event.target.value })} required />
+            <label className="flex items-start gap-3 rounded-md border border-gold/45 bg-gold/10 p-3 text-sm leading-6 text-slate-300">
+              <input
+                checked={acceptedLeaderTerms}
+                className="mt-1 h-4 w-4 accent-mint"
+                onChange={(event) => setAcceptedLeaderTerms(event.target.checked)}
+                required
+                type="checkbox"
+              />
+              <span>{t("agreeToLeaderTerms")}</span>
+            </label>
             {createProfile.error && <p className="text-sm text-redsignal">{createProfile.error.message}</p>}
-            <Button className="w-fit" disabled={createProfile.isPending || form.strategies.length === 0}>{t("createProfile")}</Button>
+            <Button className="w-fit" disabled={createProfile.isPending || form.strategies.length === 0 || !acceptedLeaderTerms}>{t("createProfile")}</Button>
           </form>
         </Card>
       )}
@@ -320,6 +350,14 @@ export default function LeaderStudioPage() {
                 ) : (
                   <span className="rounded-full border border-line bg-panel2 px-3 py-1 font-semibold text-slate-400">{t("unverifiedLeader")}</span>
                 )}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                <span className="rounded border border-line bg-[#08120f] px-3 py-1.5 text-slate-300">
+                  {t("monthly")}: <span className="font-mono text-mint">{formatCurrency(profile.data.monthly_price)}</span>
+                </span>
+                <span className="rounded border border-line bg-[#08120f] px-3 py-1.5 text-slate-300">
+                  {t("yearly")}: <span className="font-mono text-mint">{formatCurrency(profile.data.yearly_price)}</span>
+                </span>
               </div>
               {profileMessage && <p className="mt-3 text-sm text-mint">{profileMessage}</p>}
             </div>
@@ -348,6 +386,8 @@ export default function LeaderStudioPage() {
               />
               <SubscriptionPriceFields
                 title={t("subscriptionPrice")}
+                monthlyLabel={t("monthlyPrice")}
+                yearlyLabel={t("yearlyPrice")}
                 monthlyValue={profileForm.monthly_price}
                 yearlyValue={profileForm.yearly_price}
                 onMonthlyChange={(value) => setProfileForm({ ...profileForm, monthly_price: value, subscription_price: value })}

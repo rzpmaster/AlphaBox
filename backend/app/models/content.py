@@ -14,6 +14,8 @@ class Post(TimestampMixin, Base):
     leader_id: Mapped[int] = mapped_column(ForeignKey("leaders.id"), index=True)
     title: Mapped[str] = mapped_column(String(180))
     body: Mapped[str] = mapped_column(Text)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     leader: Mapped["Leader"] = relationship(back_populates="posts")  # noqa: F821
 
@@ -35,5 +37,7 @@ class Signal(TimestampMixin, Base):
     exit_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 6), nullable=True)
     return_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     leader: Mapped["Leader"] = relationship(back_populates="signals")  # noqa: F821

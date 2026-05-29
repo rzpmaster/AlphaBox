@@ -3,6 +3,8 @@ from functools import lru_cache
 from pydantic import AnyHttpUrl, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.schemas.common import EmailAddress
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -15,7 +17,7 @@ class Settings(BaseSettings):
     database_url: str
     redis_url: str = "redis://localhost:6379/0"
     create_initial_admin: bool = True
-    initial_admin_email: str = "admin@alphabox.local"
+    initial_admin_email: EmailAddress = "admin@alphabox.com"
     initial_admin_password: str = Field(default="ChangeMe123!", min_length=8)
     initial_admin_display_name: str = "AlphaBox Admin"
 
