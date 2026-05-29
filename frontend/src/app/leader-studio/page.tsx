@@ -407,13 +407,13 @@ export default function LeaderStudioPage() {
       )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <Link className="rounded-lg border border-line bg-panel p-6 hover:border-mint/50" href="/leader/posts/new">
+        <Link className="rounded-lg border border-line bg-panel p-6 hover:border-mint/50" href="/leader-studio/posts/new">
           <FilePlus2 className="text-gold" />
           <h2 className="mt-4 text-xl font-semibold">{t("newPost")}</h2>
           <p className="mt-2 text-sm text-slate-400">{t("newPostCopy")}</p>
           <Button className="mt-5" variant="ghost">{t("openEditor")}</Button>
         </Link>
-        <Link className="rounded-lg border border-line bg-panel p-6 hover:border-mint/50" href="/leader/signals/new">
+        <Link className="rounded-lg border border-line bg-panel p-6 hover:border-mint/50" href="/leader-studio/signals/new">
           <RadioTower className="text-mint" />
           <h2 className="mt-4 text-xl font-semibold">{t("newSignal")}</h2>
           <p className="mt-2 text-sm text-slate-400">{t("newSignalCopy")}</p>
@@ -443,7 +443,7 @@ export default function LeaderStudioPage() {
                         <time className="mt-3 block text-xs text-slate-500">{formatDateTime(post.created_at, locale)}</time>
                     </div>
                     <div className="absolute right-3 top-3 flex gap-2">
-                        <Link href={`/leader/posts/${post.id}/edit?lang=${locale}`}>
+                        <Link href={`/leader-studio/posts/${post.id}/edit?lang=${locale}`}>
                           <Button className={iconButtonClass} variant="ghost" aria-label={t("edit")} title={t("edit")}>
                             <Pencil size={15} />
                           </Button>
@@ -502,12 +502,12 @@ export default function LeaderStudioPage() {
                     <div className="absolute right-3 top-3 flex gap-2">
                         {!signal.is_archived && (
                           <>
-                            <Link href={`/leader/signals/${signal.id}/edit?lang=${locale}`}>
+                            <Link href={`/leader-studio/signals/${signal.id}/edit?lang=${locale}`}>
                               <Button className={iconButtonClass} variant="ghost" aria-label={t("edit")} title={t("edit")}>
                                 <Pencil size={15} />
                               </Button>
                             </Link>
-                            <Link href={`/leader/signals/${signal.id}/archive?lang=${locale}`}>
+                            <Link href={`/leader-studio/signals/${signal.id}/archive?lang=${locale}`}>
                               <Button className={archiveIconButtonClass} variant="ghost" aria-label={t("archiveSignal")} title={t("archiveSignal")}>
                                 <Archive size={15} />
                               </Button>

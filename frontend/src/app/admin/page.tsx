@@ -127,7 +127,7 @@ function PaginationControls({ currentPage, label, onPageChange, onPageSizeChange
   );
 }
 
-export default function InvitationAdminPage() {
+export default function AdminPage() {
   const { locale, t } = useI18n();
   const me = useMe();
   const invitations = useInvitationCodes();

@@ -35,7 +35,7 @@ export default function EditPostPage() {
     event.preventDefault();
     try {
       await updatePost.mutateAsync({ id: postId, title: title.trim(), body: body.trim() });
-      router.push(`/leader?lang=${locale}`);
+      router.push(`/leader-studio?lang=${locale}`);
     } catch {
       // Error is rendered from the mutation state below.
     }
@@ -51,7 +51,7 @@ export default function EditPostPage() {
         <Card className="mb-6 p-6">
           <h2 className="text-xl font-semibold">{t("profileRequired")}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">{t("profileRequiredCopy")}</p>
-          <Link className="mt-5 inline-flex" href={`/leader?lang=${locale}`}>
+          <Link className="mt-5 inline-flex" href={`/leader-studio?lang=${locale}`}>
             <Button>{t("createProfileNow")}</Button>
           </Link>
         </Card>
@@ -66,7 +66,7 @@ export default function EditPostPage() {
             {updatePost.error && <p className="text-sm text-redsignal">{updatePost.error.message}</p>}
             <div className="flex flex-wrap gap-3">
               <Button disabled={updatePost.isPending || !profile.data}>{t("save")}</Button>
-              <Link href={`/leader?lang=${locale}`}>
+              <Link href={`/leader-studio?lang=${locale}`}>
                 <Button type="button" variant="ghost" disabled={updatePost.isPending}>
                   {t("cancel")}
                 </Button>

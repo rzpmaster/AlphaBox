@@ -16,8 +16,8 @@ export function Nav() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const nextLocale = locale === "zh" ? "en" : "zh";
   const isAdmin = me.data?.role === "admin";
-  const feedHref = me.data ? "/app" : "/auth/login";
-  const studioHref = me.data ? "/leader" : "/auth/login";
+  const feedHref = me.data ? "/feed" : "/auth/login";
+  const studioHref = me.data ? "/leader-studio" : "/auth/login";
 
   useEffect(() => {
     if (!me.data) {
@@ -54,7 +54,7 @@ export function Nav() {
             {t("navStudio")}
           </Link>
           {isAdmin && (
-            <Link className="px-2 py-2 hover:text-mint" href="/admin/invitations">
+            <Link className="px-2 py-2 hover:text-mint" href="/admin">
               {t("navAdmin")}
             </Link>
           )}

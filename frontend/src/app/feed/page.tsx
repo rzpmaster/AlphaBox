@@ -32,7 +32,7 @@ export default function AppHomePage() {
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-mint">{t("subscriberFeed")}</p>
           <h1 className="mt-3 text-3xl font-semibold">{t("latestIntelligence")}</h1>
         </div>
-        <Link href="/app/subscriptions">
+        <Link href="/feed/subscriptions">
           <Button variant="ghost">{t("subscriptions")}</Button>
         </Link>
       </div>
@@ -50,7 +50,7 @@ export default function AppHomePage() {
       </div>
       <div className="grid gap-4">
         {filteredFeed.map((item) => (
-          <Link key={`${item.type}-${item.item.id}`} href={`/app/${item.type === "signal" ? "signals" : "posts"}/${item.item.id}`}>
+          <Link key={`${item.type}-${item.item.id}`} href={`/feed/${item.type === "signal" ? "signals" : "posts"}/${item.item.id}`}>
             <FeedItemCard item={item} />
           </Link>
         ))}

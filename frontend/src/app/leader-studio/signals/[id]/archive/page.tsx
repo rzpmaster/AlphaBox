@@ -52,7 +52,7 @@ export default function ArchiveSignalPage() {
     event.preventDefault();
     try {
       await archiveSignal.mutateAsync({ id: signalId, current_price: currentPrice.trim() });
-      router.push(`/leader?lang=${locale}`);
+      router.push(`/leader-studio?lang=${locale}`);
     } catch {
       // Error is rendered from the mutation state below.
     }
@@ -68,7 +68,7 @@ export default function ArchiveSignalPage() {
         <Card className="mb-6 p-6">
           <h2 className="text-xl font-semibold">{t("profileRequired")}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">{t("profileRequiredCopy")}</p>
-          <Link className="mt-5 inline-flex" href={`/leader?lang=${locale}`}>
+          <Link className="mt-5 inline-flex" href={`/leader-studio?lang=${locale}`}>
             <Button>{t("createProfileNow")}</Button>
           </Link>
         </Card>
@@ -98,7 +98,7 @@ export default function ArchiveSignalPage() {
             {archiveSignal.error && <p className="text-sm text-redsignal">{archiveSignal.error.message}</p>}
             <div className="flex flex-wrap gap-3">
               {!signal.is_archived && <Button disabled={archiveSignal.isPending || !profile.data}>{t("archiveAndCalculate")}</Button>}
-              <Link href={`/leader?lang=${locale}`}>
+              <Link href={`/leader-studio?lang=${locale}`}>
                 <Button type="button" variant="ghost" disabled={archiveSignal.isPending}>
                   {t("cancel")}
                 </Button>

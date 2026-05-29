@@ -118,7 +118,7 @@ export default function PublicLeaderDetailPage() {
           <div className={isPaid ? "grid gap-4" : "pointer-events-none select-none grid gap-4 blur-[5px]"}>
             <h2 className="text-lg font-semibold">{t("recentSignals")}</h2>
             {signals.data?.slice(0, 3).map((signal) => (
-              <Link key={signal.id} href={`/app/signals/${signal.id}`} className={!isPaid ? "pointer-events-none block" : "block"}>
+              <Link key={signal.id} href={`/feed/signals/${signal.id}`} className={!isPaid ? "pointer-events-none block" : "block"}>
                 <Card className={isPaid ? "flex min-h-[190px] cursor-pointer flex-col p-4 hover:border-mint/50" : "flex min-h-[190px] flex-col p-4"}>
                   <div className="flex min-h-8 items-start justify-between gap-4">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -149,7 +149,7 @@ export default function PublicLeaderDetailPage() {
             ))}
             <h2 className="pt-4 text-lg font-semibold">{t("posts")}</h2>
             {posts.data?.slice(0, 3).map((post) => (
-              <Link key={post.id} href={`/app/posts/${post.id}`} className={!isPaid ? "pointer-events-none" : ""}>
+              <Link key={post.id} href={`/feed/posts/${post.id}`} className={!isPaid ? "pointer-events-none" : ""}>
                 <Card className={isPaid ? "cursor-pointer p-4 hover:border-mint/50" : "p-4"}>
                   <div className="flex items-center gap-3">
                     <FileText size={16} className="text-gold" />

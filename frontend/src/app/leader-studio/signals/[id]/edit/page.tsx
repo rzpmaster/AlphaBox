@@ -80,7 +80,7 @@ export default function EditSignalPage() {
         thesis: form.thesis.trim(),
         timeframe: form.timeframe.trim()
       });
-      router.push(`/leader?lang=${locale}`);
+      router.push(`/leader-studio?lang=${locale}`);
     } catch {
       // Error is rendered from the mutation state below.
     }
@@ -100,7 +100,7 @@ export default function EditSignalPage() {
         <Card className="mb-6 p-6">
           <h2 className="text-xl font-semibold">{t("profileRequired")}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">{t("profileRequiredCopy")}</p>
-          <Link className="mt-5 inline-flex" href={`/leader?lang=${locale}`}>
+          <Link className="mt-5 inline-flex" href={`/leader-studio?lang=${locale}`}>
             <Button>{t("createProfileNow")}</Button>
           </Link>
         </Card>
@@ -159,7 +159,7 @@ export default function EditSignalPage() {
             {updateSignal.error && <p className="text-sm text-redsignal">{updateSignal.error.message}</p>}
             <div className="flex flex-wrap gap-3">
               {!isLocked && <Button disabled={updateSignal.isPending || !profile.data}>{t("save")}</Button>}
-              <Link href={`/leader?lang=${locale}`}>
+              <Link href={`/leader-studio?lang=${locale}`}>
                 <Button type="button" variant="ghost" disabled={updateSignal.isPending}>
                   {t("cancel")}
                 </Button>

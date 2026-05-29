@@ -28,7 +28,7 @@ export default function RegisterPage() {
     if (!acceptedTerms) return;
     const { confirm_password: _confirmPassword, ...payload } = form;
     await register.mutateAsync(payload);
-    router.push("/app");
+    router.push("/feed");
   }
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -45,7 +45,7 @@ export default function NewSignalPage() {
     event.preventDefault();
     try {
       await createSignal.mutateAsync(form);
-      router.push(`/leader?lang=${locale}`);
+      router.push(`/leader-studio?lang=${locale}`);
     } catch {
       // Error is rendered from the mutation state below.
     }
@@ -61,7 +61,7 @@ export default function NewSignalPage() {
         <Card className="mb-6 p-6">
           <h2 className="text-xl font-semibold">{t("profileRequired")}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">{t("profileRequiredCopy")}</p>
-          <Link className="mt-5 inline-flex" href="/leader">
+          <Link className="mt-5 inline-flex" href="/leader-studio">
             <Button>{t("createProfileNow")}</Button>
           </Link>
         </Card>
@@ -115,7 +115,15 @@ export default function NewSignalPage() {
           <Textarea placeholder={t("signalThesis")} value={form.thesis} onChange={(event) => setForm({ ...form, thesis: event.target.value })} />
           {createSignal.error && <p className="text-sm text-redsignal">{createSignal.error.message}</p>}
           {createSignal.isSuccess && <p className="text-sm text-mint">{t("signalPublished")}</p>}
-          <Button disabled={createSignal.isPending || !profile.data}>{t("publishSignal")}</Button>
+          <div className="flex flex-wrap gap-3">
+            <Button disabled={createSignal.isPending || !profile.data}>{t("publishSignal")}</Button>
+            <Link href={`/leader-studio?lang=${locale}`}>
+              <Button type="button" variant="ghost">
+                <ArrowLeft size={16} />
+                {t("back")}
+              </Button>
+            </Link>
+          </div>
         </form>
       </Card>
     </main>

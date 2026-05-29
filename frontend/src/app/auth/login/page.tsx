@@ -20,7 +20,7 @@ export default function LoginPage() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     await login.mutateAsync({ email, password });
-    router.push("/app");
+    router.push("/feed");
   }
 
   return (
